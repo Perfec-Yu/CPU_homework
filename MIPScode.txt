@@ -104,9 +104,9 @@ ML:	andi $t0,$s1,15
 DISP:	sw $t0,20($s0)
 	sw $s6,8($s0)
 	j ENDINT
-RXINT:	lw $t2,32($s0)
-	andi $t2,$t2,23
-	sw $t2,32($s0)
+RXINT:	lw $t0,32($s0)
+	andi $t0,$t0,23
+	sw $t0,32($s0)
 	srl $t0,$s1,31
 	bne $t0,$zero,RXM
 RXN:	lw $s2,28($s0)
