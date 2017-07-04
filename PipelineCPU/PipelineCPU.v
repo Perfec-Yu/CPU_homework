@@ -48,10 +48,10 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
 	wire [1:0] WB_MemtoReg; 
     
     // data
-    reg [31:0] IF_PC;
+    wire [31:0] IF_PC;
     wire [31:0] IF_Instruction;
 	
-    reg [31:0] ID_PC;
+    wire [31:0] ID_PC;
 	wire [31:0] ID_Instruction; // Inst.
     wire [31:0] ID_DatabusA;
     wire [31:0] ID_DatabusB;
@@ -65,8 +65,8 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
     wire ID_Jump_R; // @ID
     wire [4:0] ID_Shamt;
 
-    reg [31:0] EX_PC;
-    reg [31:0] EX_PC_Plus_4;
+    wire [31:0] EX_PC;
+    wire [31:0] EX_PC_Plus_4;
     wire [4:0] EX_Rs;
     wire [4:0] EX_Rt;
     wire [4:0] EX_Rd;
@@ -81,18 +81,18 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
 	wire [31:0] EX_ConBA; // @EX, target address for Branch inst.
     wire EX_Branch_EN; // @EX, whether branch inst. @EX stage occurs
     
-    wire [4:0] EX_MEM_Rd;
+    reg [4:0] EX_MEM_Rd;
 
     wire [4:0] MEM_Rd;
-    reg [31:0] MEM_PC_Plus_4;
-	reg [31:0] MEM_PC;
+    wire [31:0] MEM_PC_Plus_4;
+	wire [31:0] MEM_PC;
 	wire [31:0] MEM_Read_data; // @MEM, Memory data
 	wire [31:0] MEM_Read_data_1; // @MEM
 	wire [31:0] MEM_Read_data_2; // @MEM
     wire [31:0] MEM_ALU_out; // @MEM
     wire [31:0] MEM_DatabusB; // @MEM
 
-    reg [31:0] WB_PC;
+    wire [31:0] WB_PC;
     wire [31:0] WB_Read_data;
 	wire [31:0] WB_DatabusC; // Register Databus: A, B for read; C for write
 	wire [4:0] WB_Write_Reg; // @WB, Register to Write
@@ -105,13 +105,13 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
 
     wire ID_IRQ;
     wire ID_EXP;
-    wire ID_Flush;
-    wire EX_Flush;
-    wire Loaduse;
+    reg ID_Flush;
+    reg EX_Flush;
+    reg Loaduse;
 	
     // Forwarding
-    wire [1:0] ForwardA;
-    wire [1:0] ForwardB;
+    reg [1:0] ForwardA;
+    reg [1:0] ForwardB;
 
     // parameters
     parameter ILLOP = 32'h8000_0004; // Interrupt PC Address
@@ -193,17 +193,36 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
         else begin
             ForwardB = 2'b00;
         end
+        
+        if (ID_MemRd) begin
+            if ((IF_Instruction[25:21] == ID_Rt)||(IF_Instruction[20:16] == ID_Rt)) begin
+                Loaduse <= 1'b1;
+            end
+            else begin
+                Loaduse <= 1'b0;
+            end
+        end
     end
 
-    assign ID_Flush = ID_Jump_I | ID_Jump_R | EX_Branch_EN;
+    assign ID_Flush = ID_Jump_I | ID_Jump_R | EX_Branch_EN | Loaduse;
     assign EX_Flush = EX_Branch_EN & (~ID_IRQ);
     assign EX_MEM_Rd = (EX_RegDst==2'b00)? EX_Rd:
         (EX_RegDst==2'b01)? EX_Rt:
         (EX_RegDst==2'b10)? Ra: Xp;
+    always@(posedge clk or negedge reset) begin
+        if (~reset) begin
+            EX_MEM_Rd <= 5'b0;
+            ID_Flush <= 1'b0;
+            EX_Flush <= 1'b0;
+            Loaduse <= 1'b0;
+            ForwardA <= 2'b0;
+            ForwardB <= 2'b0;
+        end
+    end
+	/*
 	assign Write_Reg = (RegDst == 2'b00)? Instruction[15:11]: 
         (RegDst == 2'b01)? Instruction[20:16]:
         (RegDst == 2'b10)? Ra: Xp;
-	/*
 	wire [2:0] PCSrc; // select Source of PC
 	wire EX_Zero; // @EX, ALU output, Branch equal
     wire EX_Overflow; // @EX, ALU output, result overflow

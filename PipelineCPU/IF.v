@@ -1,4 +1,4 @@
-module IF(clk, reset, EX_ConBA, EX_Branch_EN, ID_Jump_I, ID_Jump_R, ID_JT, ID_DatabusA, ID_EXP, ID_IRQ, IF_PC, IF_Instruction);
+module IF(clk, reset, EX_ConBA, EX_Branch_EN, ID_Jump_I, ID_Jump_R, ID_JT, ID_DatabusA, ID_EXP, ID_IRQ, IF_PC, IF_Instruction, Loaduse);
     input clk, reset;
     input EX_Branch_EN;
     input [31:0] EX_ConBA;
@@ -8,6 +8,7 @@ module IF(clk, reset, EX_ConBA, EX_Branch_EN, ID_Jump_I, ID_Jump_R, ID_JT, ID_Da
     input [31:0] ID_JT;
     input ID_IRQ;
     input ID_EXP;
+    input Loaduse;
     output [31:0] IF_Instruction;
     output reg [31:0] IF_PC;
 
@@ -18,13 +19,15 @@ module IF(clk, reset, EX_ConBA, EX_Branch_EN, ID_Jump_I, ID_Jump_R, ID_JT, ID_Da
         ID_EXP? 3'b101:
         EX_Branch_EN? 3'b001:
         ID_Jump_I? 3'b010:
-        ID_Jump_R? 3'b011:3'b000;
+        ID_Jump_R? 3'b011:
+        Loaduse? 3'b110: 3'b000;
     assign IF_PC_Plus_4 = IF_PC + 32'd4;
     assign PC_out = (PCSrc==3'd0)? IF_PC_Plus_4:
         (PCSrc==3'd1)? EXConBA:
         (PCSrc==3'd2)? ID_JT:
         (PCSrc==3'd3)? ID_DatabusA:
-        (PCSrc==3'd4)? ILLOP:XADR;
+        (PCSrc==3'd4)? ILLOP:
+        (PCSrc==3'd6)? IF_PC: XADR;
     /*always@(*) begin
         if (ID_IRQ) begin
             PC_out <= ILLOP;
