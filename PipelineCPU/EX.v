@@ -11,25 +11,30 @@ module EX(
     input [31:0] PC,
     input [1:0] ForwardA,
     input [1:0] ForwardB,
+    input [31:0] MEM_ALU_out,
+    input [31:0] WB_DatabusC,
+    input Branch,
+    output [31:0] DatabusB_DM,
     output [31:0] ALU_out,
     output [31:0] ConBA,
     output EX_Branch_EN,
-    output PC_Plus_4),
-    wire ALU_in1;
-    wire ALU_in2;
+    output [31:0] PC_Plus_4);
+    wire [31:0] ALU_in1;
+    wire [31:0] ALU_in2;
     wire Zero;
     wire Overflow;
     wire Negtive;
     assign ALU_in1 = ALUSrc1? {27'b0, Shamt}: 
         (ForwardA==2'b10)? MEM_ALU_out: 
-        (ForwardA==2'b01)? WB_Read_data: DatabusA;
+        (ForwardA==2'b01)? WB_DatabusC: DatabusA;
     assign ALU_in2 = ALUSrc2? LU_out: 
         (ForwardB==2'b10)? MEM_ALU_out:
-        (ForwardB==2'b01)? WB_Read_data: DatabusB;
-    assign PC_plus_4 = PC + 32'd4;
-    assign ConBA = {EXT_out[29:0], 2'b00} + PC_plus_4; 
-    assign Branch = (ALUFun[5:4]==2'b11);
+        (ForwardB==2'b01)? WB_DatabusC: DatabusB;
+    assign PC_Plus_4 = PC + 32'd4;
+    assign ConBA = {Ext_out[29:0], 2'b00} + PC_Plus_4;
     assign EX_Branch_EN = Branch & ALU_out[0];
+    assign DatabusB_DM = (ForwardB==2'b10)? MEM_ALU_out:
+        (ForwardB==2'b01)? WB_DatabusC: DatabusB;
      
 	ALU alu1(.A(ALU_in1), .B(ALU_in2), .ALUFun(ALUFun), .Sign(Sign), .out(ALU_out), .Zero(Zero), .Overflow(Overflow), .Negative(Negtive));
 endmodule

@@ -1,4 +1,4 @@
-module MEM(Read_data_1, Read_data_2, Read_data);
+module MEM(Read_data_1, Read_data_2, Read_data, Data_Read);
     input [31:0] Read_data_1;
     input [31:0] Read_data_2;
     input Data_Read;

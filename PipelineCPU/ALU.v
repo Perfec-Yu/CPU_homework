@@ -1,10 +1,10 @@
 module ALU (A, B, ALUFun, Sign, out, Zero, Overflow, Negative);
         
         input [31:0] A; // ALU operand
-	input [31:0] B; // ALU operand
+        input [31:0] B; // ALU operand
         input [5:0] ALUFun; // ALU Function
         input Sign; // ALU works with signed or unsigned numbers
-	output reg [31:0] out; // ALU output 
+        output reg [31:0] out; // ALU output 
                            // ?reg
         output Zero; // ALU output, Branch equal
         output Overflow; // ALU output, result overflow

@@ -20,3 +20,4 @@ module IF_ID_reg (clk, reset, IF_PC, IF_Instruction, ID_PC, ID_Instruction, ID_F
             end
         end
     end
+endmodule

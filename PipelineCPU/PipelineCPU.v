@@ -64,7 +64,9 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
     wire ID_Jump_I; // @ID
     wire ID_Jump_R; // @ID
     wire [4:0] ID_Shamt;
+    wire ID_Branch;
 
+    wire EX_Branch;
     wire [31:0] EX_PC;
     wire [31:0] EX_PC_Plus_4;
     wire [4:0] EX_Rs;
@@ -75,14 +77,16 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
     wire [4:0] EX_Shamt;
     wire [31:0] EX_DatabusA;
     wire [31:0] EX_DatabusB;
+    wire [31:0] EX_DatabusB_DM;
 	wire [31:0] EX_ALU_in1; // decided @EX stage, ALU operand
 	wire [31:0] EX_ALU_in2; // decided @EX stage, ALU operand
 	wire [31:0] EX_ALU_out; // @EX, ALU output
 	wire [31:0] EX_ConBA; // @EX, target address for Branch inst.
     wire EX_Branch_EN; // @EX, whether branch inst. @EX stage occurs
     
-    reg [4:0] EX_MEM_Rd;
+    wire [4:0] EX_MEM_Rd;
 
+    wire MEM_Branch_EN;
     wire [4:0] MEM_Rd;
     wire [31:0] MEM_PC_Plus_4;
 	wire [31:0] MEM_PC;
@@ -93,9 +97,11 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
     wire [31:0] MEM_DatabusB; // @MEM
 
     wire [31:0] WB_PC;
+    wire [31:0] WB_PC_Plus_4;
     wire [31:0] WB_Read_data;
+    wire [31:0] WB_ALU_out;
 	wire [31:0] WB_DatabusC; // Register Databus: A, B for read; C for write
-	wire [4:0] WB_Write_Reg; // @WB, Register to Write
+	wire [4:0] WB_Rd; // @WB, Register to Write
 	
     // peripherals
     input wire [7:0] led; // LED7 ~ LED0, 0x4000000C
@@ -105,8 +111,9 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
 
     wire ID_IRQ;
     wire ID_EXP;
-    reg ID_Flush;
-    reg EX_Flush;
+    wire ID_Flush;
+    wire EX_Flush;
+    
     reg Loaduse;
 	
     // Forwarding
@@ -114,46 +121,49 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
     reg [1:0] ForwardB;
 
     // parameters
-    parameter ILLOP = 32'h8000_0004; // Interrupt PC Address
-    parameter XADR = 32'h8000_0008; // Exception PC Address
 	parameter Xp = 5'h1a; // $26 to save return address when Interr. or Except.
     parameter Ra = 5'h1f; // $31
 
     IF ifA(.clk(clk), .reset(reset), .EX_ConBA(EX_ConBA), 
         .EX_Branch_EN(EX_Branch_EN), .ID_Jump_I(ID_Jump_I), 
         .ID_Jump_R(ID_Jump_R), .ID_JT(ID_JT),.ID_DatabusA(ID_DatabusA), 
-        .ID_IRQ(ID_IRQ), .ID_EXP(ID_EXP), .IF_PC(IF_PC), .IF_Instruction(IF_Instruction));
+        .ID_IRQ(ID_IRQ), .ID_EXP(ID_EXP), .IF_PC(IF_PC), .IF_Instruction(IF_Instruction), .Loaduse(Loaduse));
 
     IF_ID_reg ifidregA(.clk(clk), .reset(reset), .IF_PC(IF_PC), .IF_Instruction(IF_Instruction), .ID_PC(ID_PC), .ID_Instruction(ID_Instruction), .ID_Flush(ID_Flush));
 
-    ID idA(.clk(clk), .reset(reset), .PC(ID_PC), .Instruction(ID_Instruction), .IRQ(irqout) 
+    ID idA(.clk(clk), .reset(reset), .PC(ID_PC), .Instruction(ID_Instruction), .IRQ(irqout), .PCSuper(IF_PC[31]),
         .data_out({ID_JT,ID_Shamt,ID_Rs,ID_Rt,ID_Rd,ID_Ext_out,ID_LU_out}), 
-        .ctr_out({ID_RegDst, ID_RegWr, ID_ALUSrc1, ID_ALUSrc2, ID_ALUFun, ID_Sign, ID_MemWr, ID_MemRd, ID_MemtoReg, ID_Jump_I, ID_Jump_R, ID_EXP, ID_IRQ}); 
+        .ctr_out({ID_RegDst, ID_RegWr, ID_ALUSrc1, ID_ALUSrc2, ID_ALUFun, ID_Sign, ID_MemWr, ID_MemRd, ID_MemtoReg, ID_Jump_I, ID_Jump_R, ID_EXP, ID_IRQ, ID_Branch})); 
     
+    wire [31:0] regdataA;
+    wire [31:0] regdataB;
     RegFile regfileA(.reset(reset), .clk(clk), 
-        .addr1(ID_Rs), .data1(ID_DatabusA), 
-        .addr2(ID_Rt), .data2(ID_DatabusB), 
+        .addr1(ID_Rs), .data1(regdataA), 
+        .addr2(ID_Rt), .data2(regdataB), 
         .wr(WB_RegWr), .addr3(WB_Rd), .data3(WB_DatabusC));
-    
+    assign ID_DatabusA = (ID_Rs == WB_Rd && WB_RegWr)? WB_DatabusC: regdataA;
+    assign ID_DatabusB = (ID_Rt == WB_Rd && WB_RegWr)? WB_DatabusC: regdataB; 
     ID_EX_reg idexrefA(.clk(clk), .reset(reset), .EX_Branch_EN(EX_Branch_EN), 
+        .MEM_Branch_EN(MEM_Branch_EN), .IF_PC(IF_PC),
         .EX_ConBA(EX_ConBA), .ID_PC(ID_PC), .EX_PC(EX_PC), .EX_Flush(EX_Flush), 
-        .data_in({ID_Rs, ID_Rt, ID_Rd, ID_Ext_out, ID_LU_out, ID_Shamt, ID_DatabusA, ID_DatabusB}), 
-        .data_out({EX_Rs, EX_Rt, EX_Rd, EX_Ext_out, EX_LU_out, EX_Shamt, EX_DatabusA, EX_DatabusB}),
-        .ctr_in({ID_RegWr, ID_RegWr, ID_ALUSrc1, ID_ALUSrc2, ID_ALUFun, ID_Sign, ID_MemWr, ID_MemRd, ID_MemtoReg}),
-        .ctr_out({EX_RegWr, EX_RegWr, EX_ALUSrc1, EX_ALUSrc2, EX_ALUFun, EX_Sign, EX_MemWr, EX_MemRd, EX_MemtoReg});
+        .data_in({ID_Rs, ID_Rt, ID_Rd, ID_Ext_out, ID_LU_out, ID_Shamt, ID_DatabusA, ID_DatabusB, ID_Branch}), 
+        .data_out({EX_Rs, EX_Rt, EX_Rd, EX_Ext_out, EX_LU_out, EX_Shamt, EX_DatabusA, EX_DatabusB, EX_Branch}),
+        .ctr_in({ID_RegDst, ID_RegWr, ID_ALUSrc1, ID_ALUSrc2, ID_ALUFun, ID_Sign, ID_MemWr, ID_MemRd, ID_MemtoReg, ID_IRQ}),
+        .ctr_out({EX_RegDst, EX_RegWr, EX_ALUSrc1, EX_ALUSrc2, EX_ALUFun, EX_Sign, EX_MemWr, EX_MemRd, EX_MemtoReg}));
 
     EX exA(.Shamt(EX_Shamt), .DatabusA(EX_DatabusA), .DatabusB(EX_DatabusB),
-        .Ext_out(Ext_out), .LU_out(LU_out), .ALUSrc1(EX_ALUSrc1), .ALUSrc2(EX_ALUSrc2),
-        .ALUFun(EX_ALUFun), .Sign(EX_Sign), PC(EX_PC), .ForwardA(ForwardA), .ForwardB(ForwardB),
-        .ALU_out(EX_ALU_out), .ConBA(EX_ConBA), .EX_Branch_EN(EX_Branch_EN), .PC_Plus_4(EX_PC_Plus_4));
+        .Ext_out(EX_Ext_out), .LU_out(EX_LU_out), .ALUSrc1(EX_ALUSrc1), .ALUSrc2(EX_ALUSrc2),
+        .ALUFun(EX_ALUFun), .Sign(EX_Sign), .PC(EX_PC), .ForwardA(ForwardA), .ForwardB(ForwardB),
+        .ALU_out(EX_ALU_out), .ConBA(EX_ConBA), .EX_Branch_EN(EX_Branch_EN), .PC_Plus_4(EX_PC_Plus_4),
+        .MEM_ALU_out(MEM_ALU_out), .WB_DatabusC(WB_DatabusC), .Branch(EX_Branch), .DatabusB_DM(EX_DatabusB_DM));
     
     EX_MEM_reg exmemregA(.clk(clk), .reset(reset), 
-        .data_in({EX_PC, EX_PC_Plus_4, EX_ALU_out, EX_DatabusB, EX_MEM_Rd}),
+        .data_in({EX_PC, EX_PC_Plus_4, EX_ALU_out, EX_DatabusB_DM, EX_MEM_Rd}),
         .data_out({MEM_PC, MEM_PC_Plus_4, MEM_ALU_out, MEM_DatabusB, MEM_Rd}),
-        .ctr_in({EX_MemtoReg, EX_MemRd, EX_MemRd, EX_RegWr}),
-        .ctr_out({MEM_MemtoReg, MEM_MemRd, MEM_MemRd, MEM_RegWr}));
+        .ctr_in({EX_MemtoReg, EX_MemWr, EX_MemRd, EX_RegWr, EX_Branch_EN}),
+        .ctr_out({MEM_MemtoReg, MEM_MemWr, MEM_MemRd, MEM_RegWr, MEM_Branch_EN}));
 
-    MEM memA(Read_data_1(MEM_Read_data_1), .Read_data_2(MEM_Read_data_2), .Read_data(MEM_Read_data));
+    MEM memA(.Read_data_1(MEM_Read_data_1), .Read_data_2(MEM_Read_data_2), .Read_data(MEM_Read_data), .Data_Read(MEM_ALU_out[30]));
 
     Peripheral peripheral1(.reset(reset),.clk(clk),
         .rd(MEM_MemRd),.wr(MEM_MemWr),.addr(MEM_ALU_out),
@@ -167,11 +177,11 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
 
     MEM_WB_reg memwbregA(.clk(clk), .reset(reset), 
         .data_in({MEM_PC, MEM_PC_Plus_4, MEM_ALU_out, MEM_Read_data, MEM_Rd}),
-        .data_out({WB_PC, WB_PC_Plus_4, WB_ALU_out, WB_Read_datad, WB_Rd}),
+        .data_out({WB_PC, WB_PC_Plus_4, WB_ALU_out, WB_Read_data, WB_Rd}),
         .ctr_in({MEM_MemtoReg, MEM_RegWr}),
         .ctr_out({WB_MemtoReg, WB_RegWr}));
 
-    WB wbA(.PC(WB_PC), .PC_plus_4(WB_PC_Plus_4), .ALU_out(WB_ALU_out), 
+    WB wbA(.PC(WB_PC), .PC_Plus_4(WB_PC_Plus_4), .ALU_out(WB_ALU_out), 
         .Read_data(WB_Read_data), .MemtoReg(WB_MemtoReg), .DatabusC(WB_DatabusC));
 
     always@(*) begin
@@ -202,24 +212,26 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
                 Loaduse <= 1'b0;
             end
         end
+        else begin
+            Loaduse <= 1'b0;
+        end
     end
 
-    assign ID_Flush = ID_Jump_I | ID_Jump_R | EX_Branch_EN | Loaduse;
+    assign ID_Flush = (ID_Jump_I || ID_Jump_R || EX_Branch_EN || Loaduse || ID_IRQ);
     assign EX_Flush = EX_Branch_EN & (~ID_IRQ);
     assign EX_MEM_Rd = (EX_RegDst==2'b00)? EX_Rd:
         (EX_RegDst==2'b01)? EX_Rt:
         (EX_RegDst==2'b10)? Ra: Xp;
     always@(posedge clk or negedge reset) begin
         if (~reset) begin
-            EX_MEM_Rd <= 5'b0;
-            ID_Flush <= 1'b0;
-            EX_Flush <= 1'b0;
             Loaduse <= 1'b0;
             ForwardA <= 2'b0;
             ForwardB <= 2'b0;
         end
     end
 	/*
+    parameter ILLOP = 32'h8000_0004; // Interrupt PC Address
+    parameter XADR = 32'h8000_0008; // Exception PC Address
 	assign Write_Reg = (RegDst == 2'b00)? Instruction[15:11]: 
         (RegDst == 2'b01)? Instruction[20:16]:
         (RegDst == 2'b10)? Ra: Xp;

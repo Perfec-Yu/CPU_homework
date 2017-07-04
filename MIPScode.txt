@@ -104,20 +104,17 @@ ML:	andi $t0,$s1,15
 DISP:	sw $t0,20($s0)
 	sw $s6,8($s0)
 	j ENDINT
-RXINT:	srl $t0,$s1,31
+RXINT:	lw $t2,32($s0)
+	andi $t2,$t2,23
+	sw $t2,32($s0)
+	srl $t0,$s1,31
 	bne $t0,$zero,RXM
 RXN:	lw $s2,28($s0)
 	or $a3,$s2,$zero
 	addi $v0,$zero,1
-	lw $t0,32($s0)
-	andi $t0,$t0,23
-	sw $t0,32($s0)
 	j ENDINT
 RXM:	lw $s1,28($s0)
 	or $a2,$s1,$zero
-	lw $t0,32($s0)
-	andi $t0,$t0,23
-	sw $t0,32($s0)
 	j ENDINT
 TXINT:	lw $t0,32($s0)
 	andi $t0,$t0,11

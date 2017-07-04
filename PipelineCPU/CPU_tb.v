@@ -48,7 +48,7 @@ module CPU_tb();
 
 
 
-	SingleCPU CPU1(.reset(reset),.sysclk(sysclk),.switch(switch),.UART_RX(UART_RX),.led(led),
+	PipelineCPU CPU1(.reset(reset),.sysclk(sysclk),.switch(switch),.UART_RX(UART_RX),.led(led),
 
 		.digi(digi),.UART_TX(UART_TX));
 
