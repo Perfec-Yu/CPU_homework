@@ -16,7 +16,7 @@ module Controller(
 	output Sign,
 	input PCSuper);
 	
-    reg [21:0] allsign;
+    reg [20:0] allsign;
 
 	assign {PCSrc, RegDst, RegWr, ALUSrc1, ALUSrc2, ALUFun, Sign, MemWr, MemRd, MemtoReg, ExtOp, LuOp} = allsign;
 

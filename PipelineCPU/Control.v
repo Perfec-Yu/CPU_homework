@@ -2,6 +2,7 @@ module Controller(
 	input [5:0] OpCode,
     input [5:0] Funct,
 	input IRQ,
+    input PCSuper,
 	output [2:0] PCSrc,
     output RegWr,
 	output [1:0] RegDst,
@@ -13,15 +14,14 @@ module Controller(
 	output ExtOp,
 	output LuOp,
 	output [5:0] ALUFun,
-	output Sign,
-	input PCSuper);
+	output Sign);
 	
     reg [21:0] allsign;
 
 	assign {PCSrc, RegDst, RegWr, ALUSrc1, ALUSrc2, ALUFun, Sign, MemWr, MemRd, MemtoReg, ExtOp, LuOp} = allsign;
 
 	always @(*) begin
-		if (IRQ & (~PCSuper)) begin
+		if ((~PCSuper) & IRQ) begin
 			allsign <= 21'b100_11_1_X_X_XXXXXX_X_0_0_11_X_X; //IRQ
 			end
 		else begin

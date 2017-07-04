@@ -215,7 +215,7 @@ void Instruction::translate()
 		}
 		machinecode = opcode + rs + rt + imm;
 	}
-	else if (type = 'J')
+	else if (type == 'J')
 	{
 		string opcode, target;
 		opcode = (op == "j") ? "000010" : "000011";
@@ -230,6 +230,10 @@ int main()
 	int n = 0;
 	ifstream ifile("MIPScode.txt");
 	ofstream ofile("Machinecode.txt");
+    if (!ifile) {
+        cout << "ERROR LOADING CODE!";
+        return -1;
+    }
 	string temp, label, op, content;
 	while (getline(ifile, temp))
 	{
