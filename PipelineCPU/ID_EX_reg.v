@@ -18,24 +18,9 @@ module ID_EX_reg(clk, reset, MEM_Branch_EN, EX_Branch_EN, EX_ConBA, IF_PC, ID_PC
             EX_PC <= 32'b0;
         end
         else begin
-            if (EX_Flush) begin
-                data_out <= 149'b0;
-                ctr_out <= 16'b0;
-                EX_PC <= 32'b0;
-            end
-            else begin
-                data_out <= data_in;
-                ctr_out <= ctr_in[16:1];
-                if (MEM_Branch_EN & ctr_in[0]) begin
-                    EX_PC <= IF_PC;
-                end
-                else if (EX_Branch_EN & ctr_in[0]) begin
-                    EX_PC <= EX_ConBA;
-                end
-                else begin
-                    EX_PC <= ID_PC;
-                end
-            end
+            data_out <= data_in;
+            ctr_out <= ctr_in[16:1];
+            EX_PC <= ID_PC;
         end
     end
 endmodule

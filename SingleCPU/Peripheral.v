@@ -1,7 +1,8 @@
 `timescale 1ns/1ps
 
-module Peripheral (reset,clk,rd,wr,addr,wdata,rdata,led,switch,digi,irqout,UART_TX,UART_RX);
+module Peripheral (sysclk, reset,clk,rd,wr,addr,wdata,rdata,led,switch,digi,irqout,UART_TX,UART_RX);
 input reset,clk;
+input sysclk;
 input rd,wr,UART_RX;
 input [31:0] addr;
 input [31:0] wdata;
@@ -90,7 +91,7 @@ always@(negedge reset or posedge clk) begin
         if(~addr[5]) begin
 	        if(UART_SIGNAL[1]) begin // send finished
 	            if(UART_CON[0]) begin
-					//UART_CON[0] <= 1'b0; // sending interrupt
+					UART_CON[0] <= 1'b0; // sending interrupt
 					UART_CON[2] <= 1'b1; 
 					UART_CON[4] <= 1'b0; // unoccupied
 					TX_EN <= 1'b0;
@@ -116,7 +117,7 @@ always@(negedge reset or posedge clk) begin
 	end
 end
 
-Uart uartA(.clk(clk),.reset(reset),.TX_DATA(TX_DATA),.RX_DATA(RX_DATA),.UART_CON(UART_CON),
+Uart uartA(.sysclk(sysclk),.clk(clk),.reset(reset),.TX_DATA(TX_DATA),.RX_DATA(RX_DATA),.UART_CON(UART_CON),
 			.UART_SIGNAL(UART_SIGNAL),.TX_EN(TX_EN),.UART_RX(UART_RX),.UART_TX(UART_TX));
 endmodule
 

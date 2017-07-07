@@ -48,7 +48,7 @@ module CPU_tb();
 
 
 
-	SingleCPU CPU1(.reset(reset),.sysclk(sysclk),.switch(switch),.UART_RX(UART_RX),.led(led),
+	PipelineCPU CPU1(.reset(reset),.sysclk(sysclk),.switch(switch),.UART_RX(UART_RX),.led(led),
 
 		.digi(digi),.UART_TX(UART_TX));
 
@@ -66,7 +66,7 @@ end
 
 
 
-always #1 sysclk <= ~sysclk;
+always #5 sysclk <= ~sysclk;
 
 
 
@@ -74,23 +74,44 @@ initial begin
 
 	#5  reset <= 1'b0;
 	#10 reset <= 1'b1;
-	#52045 UART_RX <= ~UART_RX;
-	#52045 UART_RX <= ~UART_RX;
-	#52045 UART_RX <= ~UART_RX;
-	#52045 UART_RX <= ~UART_RX;
-	#52045 UART_RX <= ~UART_RX;
-	#52045 UART_RX <= ~UART_RX;
-	#52045 UART_RX <= ~UART_RX;
-	#52045 UART_RX <= ~UART_RX;
-	#52045 UART_RX <= ~UART_RX;
-	#52045 UART_RX <= ~UART_RX;
-	#52045 ;
-	#52045 UART_RX <= ~UART_RX;//0 0
-	#104090 UART_RX <= ~UART_RX;//1
-	#52045 UART_RX <= ~UART_RX;//0 0 0
-	#156135 UART_RX <= ~UART_RX;//1
-	#52045 UART_RX <= ~UART_RX;//0 0
-	#104090 UART_RX <= ~UART_RX;//1
+
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 ;
+	#104167 UART_RX <= ~UART_RX;//0 0
+	#208334 UART_RX <= ~UART_RX;//1
+	#104167 UART_RX <= ~UART_RX;//0 0 0
+	#312501 UART_RX <= ~UART_RX;//1
+	#104167 UART_RX <= ~UART_RX;//0 0
+	#208334 UART_RX <= ~UART_RX;//1
+	#104167 ;
+	#104167 ;
+	#104167 ;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 UART_RX <= ~UART_RX;
+	#104167 ;
+	#104167 UART_RX <= ~UART_RX;//0 0
+	#208334 UART_RX <= ~UART_RX;//1
+	#104167 UART_RX <= ~UART_RX;//0 0 0
+	#312501 UART_RX <= ~UART_RX;//1
+	#104167 UART_RX <= ~UART_RX;//0 0
+	#208334 UART_RX <= ~UART_RX;//1
 
 end
 

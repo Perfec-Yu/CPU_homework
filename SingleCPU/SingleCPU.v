@@ -41,16 +41,16 @@ module SingleCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
 	wire [31:0] ConBA; // target address for Branch inst.
 	
     // peripherals
-    input wire [7:0] led; // LED7 ~ LED0, 0x4000000C
+    output wire [7:0] led; // LED7 ~ LED0, 0x4000000C
     input wire [7:0] switch; // SWITCH7 ~ SWITCH0, 0x40000010
-    input wire [11:0] digi; // { AN3 ~ AN0, DP ~ CA}, 0x40000014
+    output wire [11:0] digi; // { AN3 ~ AN0, DP ~ CA}, 0x40000014
     wire irqout; // timer interrupt signal
 	reg clk;
 	wire [31:0] Read_data_2;
 	
 	integer count=0;
 	initial clk=0;
-	always @(sysclk) begin
+	always @(posedge sysclk) begin
 		count=count+1;
 		if(count==5) begin
 			count=0;
@@ -64,7 +64,7 @@ module SingleCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
 	parameter Xp = 5'h1a; // $26 to save return address when Interr. or Except.
     parameter Ra = 5'h1f; // $31
 
-    Peripheral peripheral1(.reset(reset),.clk(clk),.rd(MemRd),.wr(MemWr),.addr(ALU_out),.wdata(DatabusB),
+    Peripheral peripheral1(.reset(reset),.sysclk(sysclk), .clk(clk),.rd(MemRd),.wr(MemWr),.addr(ALU_out),.wdata(DatabusB),
 						.rdata(Read_data_2),.led(led),.switch(switch),.digi(digi),.irqout(irqout),.UART_RX(UART_RX),.UART_TX(UART_TX));
 
     ROM romA (.addr(PC[30:0]), .data(Instruction));

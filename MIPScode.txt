@@ -59,67 +59,69 @@ CON:	or $a3,$a2,$zero
 END:	sw $s3,12($s0)
 	sw $s3,24($s0)
 	j GCD
-INTRP:	lw $t0,32($s0)
-	sll $t1,$t0,28
-	srl $t1,$t1,31
-	bne $t1,$zero,RXINT
-	sll $t1,$t0,29
-	srl $t1,$t1,31
-	bne $t1,$zero,TXINT
+INTRP:	lw $t2,32($s0)
+	sll $t3,$t2,28
+	srl $t3,$t3,31
+	bne $t3,$zero,RXINT
+	sll $t3,$t2,29
+	srl $t3,$t3,31
+	bne $t3,$zero,TXINT
 TINT:	sw $s7,8($s0)
-	slti $t0,$a1,512
-	bne $t0,$zero,ML
-	slti $t0,$a1,1024
-	bne $t0,$zero,MU
-	slti $t0,$a1,2048
-	bne $t0,$zero,NL
-NU:	srl $t0,$s2,4
-	sll $t0,$t0,2
-	lw $t0,0($t0)
-	add $t0,$t0,$a0
-	sub $t0,$t0,$a1
+	slti $t2,$a1,512
+	bne $t2,$zero,ML
+	slti $t2,$a1,1024
+	bne $t2,$zero,MU
+	slti $t2,$a1,2048
+	bne $t2,$zero,NL
+NU:	srl $t2,$t5,4
+	sll $t2,$t2,2
+	lw $t2,0($t2)
+	add $t2,$t2,$a0
+	sub $t2,$t2,$a1
 	addi $a1,$zero,256
 	j DISP
-NL:	andi $t0,$s2,15
-	sll $t0,$t0,2
-	lw $t0,0($t0)
-	add $t0,$t0,$a0
-	sub $t0,$t0,$a1
+NL:	andi $t2,$t5,15
+	sll $t2,$t2,2
+	lw $t2,0($t2)
+	add $t2,$t2,$a0
+	sub $t2,$t2,$a1
 	sll $a1,$a1,1
 	j DISP
-MU:	srl $t0,$s1,4
-	sll $t0,$t0,2
-	lw $t0,0($t0)
-	add $t0,$t0,$a0
-	sub $t0,$t0,$a1
+MU:	srl $t2,$t4,4
+	sll $t2,$t2,2
+	lw $t2,0($t2)
+	add $t2,$t2,$a0
+	sub $t2,$t2,$a1
 	sll $a1,$a1,1
 	j DISP
-ML:	andi $t0,$s1,15
-	sll $t0,$t0,2
-	lw $t0,0($t0)
-	add $t0,$t0,$a0
-	sub $t0,$t0,$a1
+ML:	andi $t2,$t4,15
+	sll $t2,$t2,2
+	lw $t2,0($t2)
+	add $t2,$t2,$a0
+	sub $t2,$t2,$a1
 	sll $a1,$a1,1
 	j DISP
-DISP:	sw $t0,20($s0)
+DISP:	sw $t2,20($s0)
 	sw $s6,8($s0)
 	j ENDINT
-RXINT:	lw $t0,32($s0)
-	andi $t0,$t0,23
-	sw $t0,32($s0)
-	srl $t0,$s1,31
-	bne $t0,$zero,RXM
+RXINT:	addi $t5,$t5,1
+	lw $t2,32($s0)
+	andi $t2,$t2,23
+	sw $t2,32($s0)
+	srl $t2,$s1,31
+	bne $t2,$zero,RXM
 RXN:	lw $s2,28($s0)
 	or $a3,$s2,$zero
+	or $t5,$s2,$zero
 	addi $v0,$zero,1
 	j ENDINT
 RXM:	lw $s1,28($s0)
 	or $a2,$s1,$zero
+	or $t4,$s1,$zero
 	j ENDINT
-TXINT:	lw $t0,32($s0)
-	andi $t0,$t0,11
-	or $t0,$t0,$s7
-	sw $t0,32($s0)
+TXINT:	lw $t2,32($s0)
+	andi $t2,$t2,11
+	sw $t2,32($s0)
 	j ENDINT
 ENDINT:	jr $k0
 EXCEPT: jr $k0
