@@ -2,19 +2,6 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
 	input reset, sysclk;
 	input UART_RX;
 	output UART_TX;
-
-	// peripherals
-    output wire [7:0] led; // LED7 ~ LED0, 0x4000000C
-    output wire [7:0] switch; // SWITCH7 ~ SWITCH0, 0x40000010
-    output wire [11:0] digi; // { AN3 ~ AN0, DP ~ CA}, 0x40000014
-    
-    // special signals
-    wire irqout; // timer interrupt signal
-    wire ID_IRQ;
-    wire ID_EXP;
-    wire ID_Flush;
-    wire EX_Flush;
-    
     // cpu_clk
 	reg clk;
 	integer count=0;
@@ -64,8 +51,8 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
     wire [31:0] IF_PC;
     wire [31:0] IF_Instruction;
 	
-    wire [31:0] IF_ID_PC;
-    wire [31:0] IF_ID_Instruction;
+    // wire [31:0] IF_ID_PC;
+    // wire [31:0] IF_ID_Instruction;
 
     wire [31:0] ID_PC;
 	wire [31:0] ID_Instruction; // Inst.
@@ -82,9 +69,9 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
     wire [4:0] ID_Shamt;
     wire ID_Branch;
 
-    wire [148:0] ID_EX_data_in;
-    wire [16:0] ID_EX_ctr_in;
-    wire [31:0] ID_EX_PC;
+    // wire [148:0] ID_EX_data_in;
+    // wire [16:0] ID_EX_ctr_in;
+    // wire [31:0] ID_EX_PC;
  
     wire EX_Branch;
     wire [31:0] EX_PC;
@@ -123,10 +110,17 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
 	wire [31:0] WB_DatabusC; // Register Databus: A, B for read; C for write
 	wire [4:0] WB_Rd; // @WB, Register to Write
 	
-
-	// Load-use hazard
+    // peripherals
+    output wire [7:0] led; // LED7 ~ LED0, 0x4000000C
+    input wire [7:0] switch; // SWITCH7 ~ SWITCH0, 0x40000010
+    output wire [11:0] digi; // { AN3 ~ AN0, DP ~ CA}, 0x40000014
+    wire irqout; // timer interrupt signal
+    wire ID_IRQ;
+    wire ID_EXP;
+    wire ID_Flush;
+    wire EX_Flush;
+    wire [4:0] UART_CON;
     reg Loaduse;
-    
     // Forwarding
     reg [1:0] ForwardA;
     reg [1:0] ForwardB;
@@ -140,7 +134,7 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
         .ID_Jump_R(ID_Jump_R), .ID_JT(ID_JT),.ID_DatabusA(ID_DatabusA), 
         .ID_IRQ(ID_IRQ), .ID_EXP(ID_EXP), .IF_PC(IF_PC), .IF_Instruction(IF_Instruction), .Loaduse(Loaduse));
 
-    IF_ID_reg ifidregA(.clk(clk), .reset(reset), .IF_PC(IF_ID_PC), .IF_Instruction(IF_ID_Instruction), .ID_PC(ID_PC), .ID_Instruction(ID_Instruction), .ID_Flush(ID_Flush));
+    IF_ID_reg ifidregA(.clk(clk), .reset(reset), .IF_PC(IF_PC), .IF_Instruction(IF_Instruction), .ID_PC(ID_PC), .ID_Instruction(ID_Instruction), .ID_Flush(ID_Flush));
 
     ID idA(.clk(clk), .reset(reset), .PC(ID_PC), .Instruction(ID_Instruction), .IRQ(irqout), .PCSuper(IF_PC[31]),
         .data_out({ID_JT,ID_Shamt,ID_Rs,ID_Rt,ID_Rd,ID_Ext_out,ID_LU_out}), 
@@ -156,10 +150,10 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
     assign ID_DatabusB = (ID_Rt == WB_Rd && WB_RegWr)? WB_DatabusC: regdataB; 
     ID_EX_reg idexrefA(.clk(clk), .reset(reset), .EX_Branch_EN(EX_Branch_EN), 
         .MEM_Branch_EN(MEM_Branch_EN), .IF_PC(IF_PC),
-        .EX_ConBA(EX_ConBA), .ID_PC(ID_EX_PC), .EX_PC(EX_PC), .EX_Flush(EX_Flush), 
-        .data_in(ID_EX_data_in), 
+        .EX_ConBA(EX_ConBA), .ID_PC(ID_PC), .EX_PC(EX_PC), .EX_Flush(EX_Flush), 
+        .data_in({ID_Rs, ID_Rt, ID_Rd, ID_Ext_out, ID_LU_out, ID_Shamt, ID_DatabusA, ID_DatabusB, ID_Branch}), 
         .data_out({EX_Rs, EX_Rt, EX_Rd, EX_Ext_out, EX_LU_out, EX_Shamt, EX_DatabusA, EX_DatabusB, EX_Branch}),
-        .ctr_in(ID_EX_ctr_in),
+        .ctr_in({ID_RegDst, ID_RegWr, ID_ALUSrc1, ID_ALUSrc2, ID_ALUFun, ID_Sign, ID_MemWr, ID_MemRd, ID_MemtoReg, ID_IRQ}),
         .ctr_out({EX_RegDst, EX_RegWr, EX_ALUSrc1, EX_ALUSrc2, EX_ALUFun, EX_Sign, EX_MemWr, EX_MemRd, EX_MemtoReg}));
 
     EX exA(.Shamt(EX_Shamt), .DatabusA(EX_DatabusA), .DatabusB(EX_DatabusB),
@@ -230,12 +224,12 @@ module PipelineCPU (reset, sysclk, UART_RX, UART_TX, digi, led, switch);
 
     assign ID_Flush = (ID_Jump_I || ID_Jump_R || EX_Branch_EN || Loaduse || ID_IRQ);
     assign EX_Flush = (EX_Branch_EN && (~ID_IRQ));
-    assign IF_ID_PC = ID_Flush?32'b0:IF_PC;
-    assign IF_ID_Instruction = ID_Flush?32'b0:IF_Instruction;
-    assign ID_EX_data_in = EX_Flush?149'b0:{ID_Rs, ID_Rt, ID_Rd, ID_Ext_out, ID_LU_out, ID_Shamt, ID_DatabusA, ID_DatabusB, ID_Branch};
-    assign ID_EX_ctr_in = EX_Flush?17'b0: {ID_RegDst, ID_RegWr, ID_ALUSrc1, ID_ALUSrc2, ID_ALUFun, ID_Sign, ID_MemWr, ID_MemRd, ID_MemtoReg, ID_IRQ};
-    assign ID_EX_PC = (MEM_Branch_EN&&ID_IRQ)?IF_PC:
-        (EX_Branch_EN&&ID_IRQ)?EX_ConBA:ID_PC;
+    //assign IF_ID_PC = ID_Flush?32'b0:IF_PC;
+    //assign IF_ID_Instruction = ID_Flush?32'b0:IF_Instruction;
+    //assign ID_EX_data_in = EX_Flush?149'b0:{ID_Rs, ID_Rt, ID_Rd, ID_Ext_out, ID_LU_out, ID_Shamt, ID_DatabusA, ID_DatabusB, ID_Branch};
+    //assign ID_EX_ctr_in = EX_Flush?17'b0: {ID_RegDst, ID_RegWr, ID_ALUSrc1, ID_ALUSrc2, ID_ALUFun, ID_Sign, ID_MemWr, ID_MemRd, ID_MemtoReg, ID_IRQ};
+    //assign ID_EX_PC = (MEM_Branch_EN&&ID_IRQ)?IF_PC:
+    //    (EX_Branch_EN&&ID_IRQ)?EX_ConBA:ID_PC;
     assign EX_MEM_Rd = (EX_RegDst==2'b00)? EX_Rd:
         (EX_RegDst==2'b01)? EX_Rt:
         (EX_RegDst==2'b10)? Ra: Xp;
