@@ -1,6 +1,8 @@
 module BRG(sysclk,sampleclk);
 input sysclk;
-output reg sampleclk=0;
+//output sampleclk;
+//assign sampleclk = sysclk;
+output reg sampleclk = 0;
 integer count=0;
 always @(posedge sysclk) begin
 	count=count+1;
