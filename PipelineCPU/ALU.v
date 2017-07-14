@@ -16,7 +16,7 @@ module ALU (A, B, ALUFun, Sign, out, Zero, Overflow, Negative);
         wire[31:0] Compare_result;
         Add add(.A(A),.B(B),.ctrl(ALUFun[0]),.Sign(Sign),.Add_result(Add_result),.Zero(Zero),.Overflow(Overflow),.Negative(Negative));
         Logic logic(.A(A),.B(B),.ctrl(ALUFun[3:0]),.Bit_result(Bit_result));
-        Compare compare(.ctrl(ALUFun[3:1]),.Zero(Zero),.Negative(Negative),.A(A),.Compare_result(Compare_result));
+        Compare compare(.ctrl(ALUFun[3:1]),.B(B),.A(A),.Compare_result(Compare_result));
         Shift shift(.A(A),.B(B),.ctrl(ALUFun[1:0]),.Shift_result(Shift_result));
         always @(*)
         begin case(ALUFun[5:4])

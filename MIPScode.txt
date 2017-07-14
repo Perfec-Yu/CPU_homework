@@ -96,7 +96,7 @@ MU:	srl $t2,$t4,4
 	j DISP
 ML:	andi $t2,$t4,15
 	sll $t2,$t2,2
-	lw $t2,0($t2)
+	lw  $t2,0($t2)
 	add $t2,$t2,$a0
 	sub $t2,$t2,$a1
 	sll $a1,$a1,1
